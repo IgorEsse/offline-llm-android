@@ -24,6 +24,12 @@ JNI API exposed to Kotlin:
 
 Native code is isolated in `llama_jni.cpp`; UI never touches llama.cpp types directly.
 
+
+## Repository note (PR tooling)
+In this environment, PR tooling does not accept binary files.
+Therefore `gradle/wrapper/gradle-wrapper.jar` is intentionally not committed.
+After cloning, run `gradle wrapper --gradle-version 8.7` once to regenerate it locally.
+
 ## Build instructions (Android Studio)
 1. Install Android Studio (Hedgehog+), Android SDK 34, NDK 26+, CMake 3.22.1.
 2. Add llama.cpp into `third_party/llama.cpp`.
