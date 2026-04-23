@@ -24,13 +24,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.offlinellm.R
 import com.example.offlinellm.domain.GenerationState
 import com.example.offlinellm.viewmodel.ChatViewModel
@@ -39,7 +39,7 @@ import com.example.offlinellm.viewmodel.SettingsViewModel
 
 @Composable
 fun ModelScreen(vm: ModelViewModel, onImport: () -> Unit) {
-    val models by vm.models.collectAsState()
+    val models by vm.models.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -91,7 +91,7 @@ fun ModelScreen(vm: ModelViewModel, onImport: () -> Unit) {
 
 @Composable
 fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
     val isLoading = state.generationState is GenerationState.LoadingModel
     val isGenerating = state.generationState is GenerationState.Generating
     val isBusy = isLoading || isGenerating
@@ -199,7 +199,7 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
 
 @Composable
 fun SettingsScreen(vm: SettingsViewModel) {
-    val settings by vm.settings.collectAsState()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()
@@ -275,20 +275,22 @@ private fun LanguageButton(selected: Boolean, label: String, onClick: () -> Unit
 
 @Composable
 private fun StatusLine(state: GenerationState) {
-    val textRes = when (state) {
-        GenerationState.Idle -> R.string.status_idle
-        GenerationState.LoadingModel -> R.string.status_loading_model
-        GenerationState.Generating -> R.string.status_generating
-        GenerationState.Canceled -> R.string.status_canceled
-        is GenerationState.Error -> R.string.status_error
-    }
     val color = when (state) {
         is GenerationState.Error -> MaterialTheme.colorScheme.error
         GenerationState.Generating, GenerationState.LoadingModel -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val suffix = if (state is GenerationState.Error) ": ${localizedError(state.message)}" else ""
-    Text(text = stringResource(textRes) + suffix, color = color)
+    Text(text = statusLabel(state) + suffix, color = color)
+}
+
+@Composable
+private fun statusLabel(state: GenerationState): String = when (state) {
+    GenerationState.Idle -> stringResource(R.string.status_idle)
+    GenerationState.LoadingModel -> stringResource(R.string.status_loading_model)
+    GenerationState.Generating -> stringResource(R.string.status_generating)
+    GenerationState.Canceled -> stringResource(R.string.status_canceled)
+    is GenerationState.Error -> stringResource(R.string.status_error)
 }
 
 @Composable
@@ -303,13 +305,13 @@ private fun localizedError(codeOrMessage: String): String {
 
 @Composable
 fun DiagnosticsScreen(chatViewModel: ChatViewModel) {
-    val state by chatViewModel.uiState.collectAsState()
+    val state by chatViewModel.uiState.collectAsStateWithLifecycle()
     ScreenCard(modifier = Modifier.fillMaxSize().padding(8.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.info_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(stringResource(R.string.info_abi))
             Text(stringResource(R.string.info_model, state.activeModel?.path ?: stringResource(R.string.info_none)))
-            Text(stringResource(R.string.info_status, state.generationState.toString()))
+            Text(stringResource(R.string.info_status, statusLabel(state.generationState)))
             Text(stringResource(R.string.info_privacy))
         }
     }
