@@ -1,0 +1,72 @@
+<resources>
+    <string name="app_name">Offline LLM</string>
+
+    <string name="tab_chat">Чат</string>
+    <string name="tab_models">Модели</string>
+    <string name="tab_settings">Настройки</string>
+    <string name="tab_info">Инфо</string>
+
+    <string name="chat_title">Локальный чат</string>
+    <string name="chat_subtitle">Ваши сообщения остаются на этом устройстве.</string>
+    <string name="chat_empty_no_model_title">Модель не выбрана</string>
+    <string name="chat_empty_no_model_body">Импортируйте GGUF-модель и назначьте её активной, чтобы начать чат.</string>
+    <string name="chat_go_to_models">Открыть модели</string>
+    <string name="chat_input_label">Введите сообщение</string>
+    <string name="chat_role_user">Пользователь</string>
+    <string name="chat_role_assistant">Ассистент</string>
+
+    <string name="models_title">Библиотека моделей</string>
+    <string name="models_subtitle">Импортируйте GGUF-файлы и выберите активную модель.</string>
+    <string name="import_model_button">Импорт .gguf модели</string>
+    <string name="models_empty">Моделей пока нет. Импортируйте GGUF-файл.</string>
+    <string name="models_size_mb">%1$s МБ</string>
+    <string name="models_no_metadata">Нет метаданных</string>
+    <string name="models_active">Активна</string>
+    <string name="models_set_active">Сделать активной</string>
+
+    <string name="settings_title">Настройки</string>
+    <string name="settings_language">Язык интерфейса</string>
+    <string name="settings_language_section">Язык</string>
+    <string name="settings_language_hint">Изменения сразу применяются ко всем экранам приложения.</string>
+    <string name="language_system">Системный</string>
+    <string name="language_english">English</string>
+    <string name="language_russian">Русский</string>
+    <string name="settings_inference_basic_section">Основные параметры инференса</string>
+    <string name="settings_inference_advanced_section">Расширенные</string>
+    <string name="settings_system_prompt">Системный промпт</string>
+    <string name="settings_system_prompt_hint">Задаёт поведение ассистента для каждого нового ответа.</string>
+    <string name="settings_temperature">Temperature</string>
+    <string name="settings_temperature_hint">Ниже — стабильнее, выше — креативнее.</string>
+    <string name="settings_top_k">Top K</string>
+    <string name="settings_top_k_hint">Ограничивает выбор K наиболее вероятными токенами.</string>
+    <string name="settings_top_p">Top P</string>
+    <string name="settings_top_p_hint">Порог nucleus sampling в диапазоне от 0 до 1.</string>
+    <string name="settings_max_tokens">Макс. токенов</string>
+    <string name="settings_max_tokens_hint">Максимум генерируемых токенов за один ответ.</string>
+    <string name="settings_context_size">Размер контекста</string>
+    <string name="settings_context_size_hint">Больший контекст использует больше RAM.</string>
+    <string name="settings_threads">Потоки</string>
+    <string name="settings_threads_hint">Количество CPU-потоков для инференса.</string>
+
+    <string name="send_button">Отправить</string>
+    <string name="stop_button">Стоп</string>
+    <string name="clear_button">Очистить</string>
+    <string name="delete_button">Удалить</string>
+
+    <string name="status_idle">Статус: ожидание</string>
+    <string name="status_loading_model">Статус: загрузка модели</string>
+    <string name="status_generating">Статус: генерация ответа</string>
+    <string name="status_canceled">Статус: остановлено</string>
+    <string name="status_error">Статус: ошибка</string>
+
+    <string name="info_title">Диагностика</string>
+    <string name="info_abi">ABI: arm64-v8a</string>
+    <string name="info_model">Выбранная модель: %1$s</string>
+    <string name="info_status">Последний статус: %1$s</string>
+    <string name="info_privacy">Приватность: сообщения остаются на устройстве.</string>
+    <string name="info_none">Нет</string>
+
+    <string name="error_no_model">Активная модель не выбрана</string>
+    <string name="error_load_failed">Не удалось загрузить модель</string>
+    <string name="error_generation_failed">Ошибка генерации</string>
+</resources>
