@@ -67,6 +67,12 @@
     <string name="info_status">Последний статус: %1$s</string>
     <string name="info_privacy">Приватность: сообщения остаются на устройстве.</string>
     <string name="info_none">Нет</string>
+    <string name="info_prompt_tokens">Токены промпта: %1$d</string>
+    <string name="info_generated_tokens">Сгенерированные токены: %1$d</string>
+    <string name="info_tokens_per_second">Токенов/сек: %1$s</string>
+    <string name="info_time_to_first_token">Время до первого токена: %1$d мс</string>
+    <string name="info_model_load_time">Время загрузки модели: %1$d мс</string>
+    <string name="info_build">Сборка: v%1$s (%2$d), %3$s, %4$s</string>
 
     <string name="error_no_model">Активная модель не выбрана</string>
     <string name="error_load_failed">Не удалось загрузить модель</string>

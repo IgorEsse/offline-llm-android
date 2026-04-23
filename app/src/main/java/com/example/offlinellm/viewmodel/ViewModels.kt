@@ -26,11 +26,21 @@ data class ChatUiState(
     val input: String = "",
     val generationState: GenerationState = GenerationState.Idle,
     val activeModel: ModelInfo? = null,
-    val streamingText: String = ""
+    val streamingText: String = "",
+    val perf: GenerationPerfStats = GenerationPerfStats()
+)
+
+data class GenerationPerfStats(
+    val promptTokens: Int = 0,
+    val generatedTokens: Int = 0,
+    val tokensPerSecond: Double = 0.0,
+    val timeToFirstTokenMs: Long = 0L,
+    val modelLoadMs: Long = 0L
 )
 
 private object PromptTemplate {
-    private const val historyLimit = 12
+    private const val historyLimit = 8
+    private const val historyCharBudget = 1200
 
     val stopMarkers = listOf(
         "\n### User:",
@@ -48,7 +58,11 @@ private object PromptTemplate {
         sb.append(systemPrompt.trim())
         sb.append("\n\n")
 
-        history.takeLast(historyLimit).forEach { msg ->
+        val trimmedHistory = history
+            .takeLast(historyLimit)
+            .takeLastWithinCharBudget(historyCharBudget)
+
+        trimmedHistory.forEach { msg ->
             when (msg.role.lowercase(Locale.ROOT)) {
                 "user" -> {
                     sb.append("### User:\n")
@@ -76,6 +90,20 @@ private object PromptTemplate {
             .minOrNull() ?: return text
         return text.substring(0, match)
     }
+
+    private fun List<ChatMessage>.takeLastWithinCharBudget(charBudget: Int): List<ChatMessage> {
+        if (isEmpty()) return emptyList()
+        var remaining = charBudget
+        val selected = ArrayList<ChatMessage>()
+        for (i in indices.reversed()) {
+            val c = this[i].content.length + 20
+            if (selected.isNotEmpty() && remaining - c < 0) break
+            selected.add(this[i])
+            remaining -= c
+        }
+        selected.reverse()
+        return selected
+    }
 }
 
 class ChatViewModel(
@@ -86,6 +114,7 @@ class ChatViewModel(
     private val input = MutableStateFlow("")
     private val gen = MutableStateFlow<GenerationState>(GenerationState.Idle)
     private val streaming = MutableStateFlow("")
+    private val perf = MutableStateFlow(GenerationPerfStats())
     private var loadedModelId: Long? = null
 
     val uiState: StateFlow<ChatUiState> = combine(
@@ -93,9 +122,10 @@ class ChatViewModel(
         input,
         gen,
         modelRepository.models,
-        streaming
-    ) { messages, inputText, generation, models, streamingText ->
-        ChatUiState(messages, inputText, generation, models.firstOrNull { it.isActive }, streamingText)
+        streaming,
+        perf
+    ) { messages, inputText, generation, models, streamingText, perfState ->
+        ChatUiState(messages, inputText, generation, models.firstOrNull { it.isActive }, streamingText, perfState)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChatUiState())
 
     fun onInputChanged(value: String) {
@@ -117,9 +147,12 @@ class ChatViewModel(
             gen.value = GenerationState.LoadingModel
 
             val shouldReload = loadedModelId != model.id || !LlamaNativeBridge.isModelLoaded()
+            var modelLoadMs = 0L
             if (shouldReload) {
                 if (LlamaNativeBridge.isModelLoaded()) LlamaNativeBridge.unloadModel()
+                val loadStart = SystemClock.elapsedRealtime()
                 val ok = LlamaNativeBridge.loadModel(model.path, settings.contextSize, settings.threads)
+                modelLoadMs = SystemClock.elapsedRealtime() - loadStart
                 if (!ok) {
                     gen.value = GenerationState.Error("LOAD_FAILED")
                     return@launch
@@ -130,12 +163,22 @@ class ChatViewModel(
             val existingMessages = chatRepository.messages.first()
             chatRepository.addMessage("user", prompt)
             val promptForModel = PromptTemplate.buildPrompt(settings.systemPrompt, existingMessages, prompt)
+            val promptTokenCount = LlamaNativeBridge.countTokens(promptForModel).coerceAtLeast(0)
 
             val builder = StringBuilder()
             streaming.value = ""
             gen.value = GenerationState.Generating
+            perf.value = perf.value.copy(
+                promptTokens = promptTokenCount,
+                generatedTokens = 0,
+                tokensPerSecond = 0.0,
+                timeToFirstTokenMs = 0L,
+                modelLoadMs = modelLoadMs
+            )
 
-            var lastUiUpdate = 0L
+            val generationStart = SystemClock.elapsedRealtime()
+            var firstTokenMs = 0L
+            var emittedChunks = 0
             var stopByMarker = false
 
             runCatching {
@@ -148,7 +191,11 @@ class ChatViewModel(
                 ).collect { token ->
                     if (stopByMarker) return@collect
 
+                    if (firstTokenMs == 0L && token.isNotBlank()) {
+                        firstTokenMs = SystemClock.elapsedRealtime() - generationStart
+                    }
                     builder.append(token)
+                    emittedChunks++
                     val trimmed = PromptTemplate.cutAtStopMarker(builder.toString())
                     if (trimmed.length != builder.length) {
                         stopByMarker = true
@@ -156,13 +203,11 @@ class ChatViewModel(
                         builder.append(trimmed)
                         LlamaNativeBridge.stopGeneration()
                     }
-
-                    val now = SystemClock.elapsedRealtime()
-                    val shouldFlush = token.contains('\n') || token.endsWith(" ") || (now - lastUiUpdate) > 45L
-                    if (shouldFlush) {
-                        streaming.value = builder.toString()
-                        lastUiUpdate = now
-                    }
+                    streaming.value = builder.toString()
+                    perf.value = perf.value.copy(
+                        generatedTokens = emittedChunks,
+                        timeToFirstTokenMs = firstTokenMs
+                    )
                 }
             }.onFailure {
                 gen.value = if ((it.message ?: "").contains("canceled", true)) {
@@ -176,6 +221,13 @@ class ChatViewModel(
             if (finalText.isNotBlank()) {
                 chatRepository.addMessage("assistant", finalText)
             }
+            val totalMs = (SystemClock.elapsedRealtime() - generationStart).coerceAtLeast(1L)
+            val generatedTokens = LlamaNativeBridge.countTokens(finalText).takeIf { it >= 0 } ?: emittedChunks
+            perf.value = perf.value.copy(
+                generatedTokens = generatedTokens,
+                tokensPerSecond = (generatedTokens * 1000.0) / totalMs,
+                timeToFirstTokenMs = firstTokenMs
+            )
             streaming.value = ""
             if (gen.value !is GenerationState.Error && gen.value != GenerationState.Canceled) {
                 gen.value = GenerationState.Idle

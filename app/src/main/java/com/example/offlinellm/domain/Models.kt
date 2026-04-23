@@ -26,9 +26,9 @@ data class InferenceSettings(
     val temperature: Float = 0.65f,
     val topK: Int = 30,
     val topP: Float = 0.9f,
-    val maxTokens: Int = 192,
-    val contextSize: Int = 1536,
-    val threads: Int = 3,
+    val maxTokens: Int = 96,
+    val contextSize: Int = 1024,
+    val threads: Int = 4,
     val defaultModelId: Long? = null,
     val uiLanguage: String = "system"
 )

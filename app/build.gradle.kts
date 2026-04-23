@@ -4,6 +4,19 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+fun gitHash(): String = try {
+    val stdout = java.io.ByteArrayOutputStream()
+    exec {
+        commandLine("git", "rev-parse", "--short", "HEAD")
+        standardOutput = stdout
+    }
+    stdout.toString().trim().ifBlank { "unknown" }
+} catch (_: Exception) {
+    "unknown"
+}
+
+val buildTimeUtc: String = java.time.Instant.now().toString()
+
 android {
     namespace = "com.example.offlinellm"
     compileSdk = 34
@@ -12,8 +25,10 @@ android {
         applicationId = "com.example.offlinellm"
         minSdk = 27
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
+        buildConfigField("String", "GIT_HASH", "\"${gitHash()}\"")
+        buildConfigField("String", "BUILD_TIME_UTC", "\"$buildTimeUtc\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
@@ -44,6 +59,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"

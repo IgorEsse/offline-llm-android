@@ -67,6 +67,12 @@
     <string name="info_status">Last status: %1$s</string>
     <string name="info_privacy">Privacy: messages stay on-device.</string>
     <string name="info_none">None</string>
+    <string name="info_prompt_tokens">Prompt tokens: %1$d</string>
+    <string name="info_generated_tokens">Generated tokens: %1$d</string>
+    <string name="info_tokens_per_second">Tokens/sec: %1$s</string>
+    <string name="info_time_to_first_token">Time to first token: %1$d ms</string>
+    <string name="info_model_load_time">Model load time: %1$d ms</string>
+    <string name="info_build">Build: v%1$s (%2$d), %3$s, %4$s</string>
 
     <string name="error_no_model">No active model selected</string>
     <string name="error_load_failed">Failed to load model</string>

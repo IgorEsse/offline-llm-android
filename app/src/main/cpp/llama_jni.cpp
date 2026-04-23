@@ -140,6 +140,37 @@ Java_com_example_offlinellm_nativebridge_LlamaNativeBridge_getModelMetadata(
     return env->NewStringUTF(out.c_str());
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_example_offlinellm_nativebridge_LlamaNativeBridge_countTokens(
+    JNIEnv * env,
+    jobject,
+    jstring text
+) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_vocab || !text) {
+        return -1;
+    }
+
+    const char * raw = env->GetStringUTFChars(text, nullptr);
+    std::string input(raw ? raw : "");
+    env->ReleaseStringUTFChars(text, raw);
+    if (input.empty()) {
+        return 0;
+    }
+
+    std::vector<llama_token> tokens(input.size() + 8);
+    const int32_t n = llama_tokenize(
+        g_vocab,
+        input.c_str(),
+        static_cast<int32_t>(input.size()),
+        tokens.data(),
+        static_cast<int32_t>(tokens.size()),
+        true,
+        false
+    );
+    return n >= 0 ? n : -1;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_example_offlinellm_nativebridge_LlamaNativeBridge_nativeGenerate(
     JNIEnv * env,

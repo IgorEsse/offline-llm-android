@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.offlinellm.R
+import com.example.offlinellm.BuildConfig
 import com.example.offlinellm.domain.GenerationState
 import com.example.offlinellm.viewmodel.ChatViewModel
 import com.example.offlinellm.viewmodel.ModelViewModel
@@ -434,6 +435,20 @@ fun DiagnosticsScreen(chatViewModel: ChatViewModel) {
             Text(stringResource(R.string.info_model, state.activeModel?.path ?: stringResource(R.string.info_none)))
             Text(stringResource(R.string.info_status, statusLabel(state.generationState)))
             Text(stringResource(R.string.info_privacy))
+            Text(stringResource(R.string.info_prompt_tokens, state.perf.promptTokens))
+            Text(stringResource(R.string.info_generated_tokens, state.perf.generatedTokens))
+            Text(stringResource(R.string.info_tokens_per_second, String.format("%.2f", state.perf.tokensPerSecond)))
+            Text(stringResource(R.string.info_time_to_first_token, state.perf.timeToFirstTokenMs))
+            Text(stringResource(R.string.info_model_load_time, state.perf.modelLoadMs))
+            Text(
+                stringResource(
+                    R.string.info_build,
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.VERSION_CODE,
+                    BuildConfig.GIT_HASH,
+                    BuildConfig.BUILD_TIME_UTC
+                )
+            )
         }
     }
 }
