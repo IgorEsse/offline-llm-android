@@ -33,6 +33,8 @@
     <string name="language_russian">Русский</string>
     <string name="settings_inference_basic_section">Inference basics</string>
     <string name="settings_inference_advanced_section">Advanced</string>
+    <string name="settings_show_advanced">Show advanced settings</string>
+    <string name="settings_hide_advanced">Hide advanced settings</string>
     <string name="settings_system_prompt">System prompt</string>
     <string name="settings_system_prompt_hint">Defines assistant behavior for every new answer.</string>
     <string name="settings_temperature">Temperature</string>
