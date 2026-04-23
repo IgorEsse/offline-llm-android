@@ -26,16 +26,27 @@
 
     <string name="settings_title">Settings</string>
     <string name="settings_language">Interface language</string>
+    <string name="settings_language_section">Language</string>
+    <string name="settings_language_hint">Changes apply to all app screens immediately.</string>
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_russian">Русский</string>
+    <string name="settings_inference_basic_section">Inference basics</string>
+    <string name="settings_inference_advanced_section">Advanced</string>
     <string name="settings_system_prompt">System prompt</string>
+    <string name="settings_system_prompt_hint">Defines assistant behavior for every new answer.</string>
     <string name="settings_temperature">Temperature</string>
+    <string name="settings_temperature_hint">Lower = more deterministic, higher = more creative.</string>
     <string name="settings_top_k">Top K</string>
+    <string name="settings_top_k_hint">Limit candidate tokens to the K most likely options.</string>
     <string name="settings_top_p">Top P</string>
+    <string name="settings_top_p_hint">Nucleus sampling threshold from 0 to 1.</string>
     <string name="settings_max_tokens">Max tokens</string>
+    <string name="settings_max_tokens_hint">Upper bound of generated tokens per response.</string>
     <string name="settings_context_size">Context size</string>
+    <string name="settings_context_size_hint">Larger context uses more RAM.</string>
     <string name="settings_threads">Threads</string>
+    <string name="settings_threads_hint">CPU threads used during inference.</string>
 
     <string name="send_button">Send</string>
     <string name="stop_button">Stop</string>

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,14 +24,17 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.offlinellm.R
@@ -200,75 +206,163 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
 @Composable
 fun SettingsScreen(vm: SettingsViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
-    Column(
-        Modifier
+    LazyColumn(
+        modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp),
+            .padding(horizontal = 8.dp)
+            .navigationBarsPadding()
+            .imePadding(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        ScreenCard {
-            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        item {
+            ScreenCard {
+                Text(
+                    stringResource(R.string.settings_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
-
-        ScreenCard {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LanguageButton(
-                        selected = settings.uiLanguage == "system",
-                        label = stringResource(R.string.language_system)
-                    ) { vm.update(settings.copy(uiLanguage = "system")) }
-                    LanguageButton(
-                        selected = settings.uiLanguage == "en",
-                        label = stringResource(R.string.language_english)
-                    ) { vm.update(settings.copy(uiLanguage = "en")) }
-                    LanguageButton(
-                        selected = settings.uiLanguage == "ru",
-                        label = stringResource(R.string.language_russian)
-                    ) { vm.update(settings.copy(uiLanguage = "ru")) }
+        item {
+            ScreenCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.settings_language_section),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.settings_language_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LanguageButton(
+                            selected = settings.uiLanguage == "system",
+                            label = stringResource(R.string.language_system)
+                        ) { vm.update(settings.copy(uiLanguage = "system")) }
+                        LanguageButton(
+                            selected = settings.uiLanguage == "en",
+                            label = stringResource(R.string.language_english)
+                        ) { vm.update(settings.copy(uiLanguage = "en")) }
+                        LanguageButton(
+                            selected = settings.uiLanguage == "ru",
+                            label = stringResource(R.string.language_russian)
+                        ) { vm.update(settings.copy(uiLanguage = "ru")) }
+                    }
                 }
             }
         }
-
-        ScreenCard {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    settings.systemPrompt,
-                    { vm.update(settings.copy(systemPrompt = it)) },
-                    label = { Text(stringResource(R.string.settings_system_prompt)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                NumberField(stringResource(R.string.settings_temperature), settings.temperature.toString()) { vm.update(settings.copy(temperature = it.toFloatOrNull() ?: settings.temperature)) }
-                NumberField(stringResource(R.string.settings_top_k), settings.topK.toString()) { vm.update(settings.copy(topK = it.toIntOrNull() ?: settings.topK)) }
-                NumberField(stringResource(R.string.settings_top_p), settings.topP.toString()) { vm.update(settings.copy(topP = it.toFloatOrNull() ?: settings.topP)) }
-                NumberField(stringResource(R.string.settings_max_tokens), settings.maxTokens.toString()) { vm.update(settings.copy(maxTokens = it.toIntOrNull() ?: settings.maxTokens)) }
-                NumberField(stringResource(R.string.settings_context_size), settings.contextSize.toString()) { vm.update(settings.copy(contextSize = it.toIntOrNull() ?: settings.contextSize)) }
-                NumberField(stringResource(R.string.settings_threads), settings.threads.toString()) { vm.update(settings.copy(threads = it.toIntOrNull() ?: settings.threads)) }
+        item {
+            ScreenCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.settings_inference_basic_section),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    OutlinedTextField(
+                        value = settings.systemPrompt,
+                        onValueChange = { vm.update(settings.copy(systemPrompt = it)) },
+                        label = { Text(stringResource(R.string.settings_system_prompt)) },
+                        supportingText = { Text(stringResource(R.string.settings_system_prompt_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 6,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    NumberField(
+                        label = stringResource(R.string.settings_temperature),
+                        value = settings.temperature.toString(),
+                        onChange = { vm.update(settings.copy(temperature = it.toFloatOrNull() ?: settings.temperature)) },
+                        helper = stringResource(R.string.settings_temperature_hint),
+                        keyboardType = KeyboardType.Decimal
+                    )
+                    NumberField(
+                        label = stringResource(R.string.settings_top_p),
+                        value = settings.topP.toString(),
+                        onChange = { vm.update(settings.copy(topP = it.toFloatOrNull() ?: settings.topP)) },
+                        helper = stringResource(R.string.settings_top_p_hint),
+                        keyboardType = KeyboardType.Decimal
+                    )
+                    NumberField(
+                        label = stringResource(R.string.settings_max_tokens),
+                        value = settings.maxTokens.toString(),
+                        onChange = { vm.update(settings.copy(maxTokens = it.toIntOrNull() ?: settings.maxTokens)) },
+                        helper = stringResource(R.string.settings_max_tokens_hint)
+                    )
+                }
             }
+        }
+        item {
+            ScreenCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.settings_inference_advanced_section),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    NumberField(
+                        label = stringResource(R.string.settings_top_k),
+                        value = settings.topK.toString(),
+                        onChange = { vm.update(settings.copy(topK = it.toIntOrNull() ?: settings.topK)) },
+                        helper = stringResource(R.string.settings_top_k_hint)
+                    )
+                    NumberField(
+                        label = stringResource(R.string.settings_context_size),
+                        value = settings.contextSize.toString(),
+                        onChange = { vm.update(settings.copy(contextSize = it.toIntOrNull() ?: settings.contextSize)) },
+                        helper = stringResource(R.string.settings_context_size_hint)
+                    )
+                    NumberField(
+                        label = stringResource(R.string.settings_threads),
+                        value = settings.threads.toString(),
+                        onChange = { vm.update(settings.copy(threads = it.toIntOrNull() ?: settings.threads)) },
+                        helper = stringResource(R.string.settings_threads_hint)
+                    )
+                }
+            }
+        }
+        item {
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
 
 @Composable
-private fun NumberField(label: String, value: String, onChange: (String) -> Unit) {
+private fun NumberField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    helper: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Number
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
+        supportingText = {
+            if (!helper.isNullOrBlank()) {
+                Text(helper)
+            }
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(14.dp),
+        singleLine = true
     )
 }
 
 @Composable
 private fun LanguageButton(selected: Boolean, label: String, onClick: () -> Unit) {
-    val colors = if (selected) {
-        ButtonDefaults.buttonColors()
-    } else {
-        ButtonDefaults.outlinedButtonColors()
-    }
-    Button(onClick = onClick, colors = colors, shape = RoundedCornerShape(10.dp)) {
+    val colors = if (selected) ButtonDefaults.buttonColors() else ButtonDefaults.outlinedButtonColors()
+    val buttonModifier = Modifier.weight(1f)
+    OutlinedButton(
+        onClick = onClick,
+        modifier = buttonModifier,
+        colors = colors,
+        shape = RoundedCornerShape(10.dp)
+    ) {
         Text(label)
     }
 }
