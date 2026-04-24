@@ -124,7 +124,13 @@ class ChatViewModel(
         modelRepository.models,
         streaming,
         perf
-    ) { messages, inputText, generation, models, streamingText, perfState ->
+    ) { values ->
+        val messages = values[0] as List<ChatMessage>
+        val inputText = values[1] as String
+        val generation = values[2] as GenerationState
+        val models = values[3] as List<ModelInfo>
+        val streamingText = values[4] as String
+        val perfState = values[5] as GenerationPerfStats
         ChatUiState(messages, inputText, generation, models.firstOrNull { it.isActive }, streamingText, perfState)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChatUiState())
 
