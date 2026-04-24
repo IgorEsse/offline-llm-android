@@ -22,14 +22,16 @@ data class ChatMessage(
 )
 
 data class InferenceSettings(
-    val systemPrompt: String = "You are a concise helpful assistant.",
-    val temperature: Float = 0.7f,
+    val systemPrompt: String = "You are a helpful assistant. Answer clearly and briefly.",
+    val temperature: Float = 0.3f,
     val topK: Int = 40,
-    val topP: Float = 0.95f,
-    val maxTokens: Int = 256,
-    val contextSize: Int = 2048,
+    val topP: Float = 0.9f,
+    val maxTokens: Int = 64,
+    val contextSize: Int = 1024,
     val threads: Int = 4,
-    val defaultModelId: Long? = null
+    val defaultModelId: Long? = null,
+    val uiLanguage: String = "system",
+    val promptTemplate: String = "auto"
 )
 
 sealed interface GenerationState {
