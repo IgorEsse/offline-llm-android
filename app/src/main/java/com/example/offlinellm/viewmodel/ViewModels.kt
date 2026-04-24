@@ -32,6 +32,12 @@ data class ChatUiState(
 
 data class GenerationPerfStats(
     val promptTokens: Int = 0,
+    val promptUtf8Length: Int = 0,
+    val promptPreviewStart: String = "",
+    val promptPreviewEnd: String = "",
+    val selectedPromptTemplate: String = "auto",
+    val stopReason: String = "",
+    val stopMarker: String = "",
     val generatedTokens: Int = 0,
     val tokensPerSecond: Double = 0.0,
     val timeToFirstTokenMs: Long = 0L,
@@ -41,54 +47,82 @@ data class GenerationPerfStats(
 private object PromptTemplate {
     private const val historyLimit = 8
     private const val historyCharBudget = 1200
+    enum class Kind { AUTO, TINYLLAMA_CHATML, ALPACA, PLAIN }
 
-    val stopMarkers = listOf(
-        "\n### User:",
-        "\nUser:",
-        "\nUSER:",
-        "\n### Human:",
-        "\nHuman:",
-        "<|user|>",
-        "<|im_start|>user"
-    )
+    private val tinyLlamaStopMarkers = listOf("</s>", "<|user|>", "<|system|>")
+    private val alpacaStopMarkers = listOf("\n### Instruction:", "\n### User:", "\n### System:")
+    private val plainStopMarkers = listOf("\nUser:", "\n### User:")
 
-    fun buildPrompt(systemPrompt: String, history: List<ChatMessage>, userInput: String): String {
-        val sb = StringBuilder(2048)
-        sb.append("### System:\n")
-        sb.append(systemPrompt.trim())
-        sb.append("\n\n")
-
-        val trimmedHistory = history
-            .takeLast(historyLimit)
-            .takeLastWithinCharBudget(historyCharBudget)
-
-        trimmedHistory.forEach { msg ->
-            when (msg.role.lowercase(Locale.ROOT)) {
-                "user" -> {
-                    sb.append("### User:\n")
-                    sb.append(msg.content.trim())
-                    sb.append("\n\n")
-                }
-                "assistant" -> {
-                    sb.append("### Assistant:\n")
-                    sb.append(msg.content.trim())
-                    sb.append("\n\n")
-                }
+    fun resolveKind(model: ModelInfo?, selected: String): Kind {
+        return when (selected.lowercase(Locale.ROOT)) {
+            "tinyllama_chatml" -> Kind.TINYLLAMA_CHATML
+            "alpaca" -> Kind.ALPACA
+            "plain" -> Kind.PLAIN
+            else -> {
+                val hint = "${model?.filename ?: ""} ${model?.metadata ?: ""}".lowercase(Locale.ROOT)
+                if (hint.contains("tinyllama") || hint.contains("chatml")) Kind.TINYLLAMA_CHATML else Kind.ALPACA
             }
         }
+    }
 
-        sb.append("### User:\n")
-        sb.append(userInput.trim())
-        sb.append("\n\n### Assistant:\n")
+    fun kindKey(kind: Kind): String = when (kind) {
+        Kind.AUTO -> "auto"
+        Kind.TINYLLAMA_CHATML -> "tinyllama_chatml"
+        Kind.ALPACA -> "alpaca"
+        Kind.PLAIN -> "plain"
+    }
+
+    fun buildPrompt(kind: Kind, systemPrompt: String, history: List<ChatMessage>, userInput: String): String {
+        val trimmedHistory = history.takeLast(historyLimit).takeLastWithinCharBudget(historyCharBudget)
+        val sb = StringBuilder(2048)
+        when (kind) {
+            Kind.TINYLLAMA_CHATML -> {
+                sb.append("<|system|>\n").append(systemPrompt.trim()).append("</s>\n")
+                trimmedHistory.forEach { msg ->
+                    when (msg.role.lowercase(Locale.ROOT)) {
+                        "user" -> sb.append("<|user|>\n").append(msg.content.trim()).append("</s>\n")
+                        "assistant" -> sb.append("<|assistant|>\n").append(msg.content.trim()).append("</s>\n")
+                    }
+                }
+                sb.append("<|user|>\n").append(userInput.trim()).append("</s>\n")
+                sb.append("<|assistant|>\n")
+            }
+            Kind.ALPACA -> {
+                sb.append("### System:\n").append(systemPrompt.trim()).append("\n\n")
+                trimmedHistory.forEach { msg ->
+                    when (msg.role.lowercase(Locale.ROOT)) {
+                        "user" -> sb.append("### User:\n").append(msg.content.trim()).append("\n\n")
+                        "assistant" -> sb.append("### Assistant:\n").append(msg.content.trim()).append("\n\n")
+                    }
+                }
+                sb.append("### User:\n").append(userInput.trim()).append("\n\n### Assistant:\n")
+            }
+            Kind.PLAIN, Kind.AUTO -> {
+                sb.append(systemPrompt.trim()).append("\n\n")
+                trimmedHistory.forEach { msg ->
+                    val role = if (msg.role.equals("user", true)) "User" else "Assistant"
+                    sb.append(role).append(": ").append(msg.content.trim()).append("\n")
+                }
+                sb.append("User: ").append(userInput.trim()).append("\nAssistant: ")
+            }
+        }
         return sb.toString()
     }
 
-    fun cutAtStopMarker(text: String): String {
-        val match = stopMarkers
-            .map { marker -> text.indexOf(marker) }
-            .filter { it >= 0 }
-            .minOrNull() ?: return text
-        return text.substring(0, match)
+    fun stopMarkers(kind: Kind): List<String> = when (kind) {
+        Kind.TINYLLAMA_CHATML -> tinyLlamaStopMarkers
+        Kind.ALPACA -> alpacaStopMarkers
+        Kind.PLAIN, Kind.AUTO -> plainStopMarkers
+    }
+
+    fun cutAtStopMarker(text: String, markers: List<String>): Pair<String, String?> {
+        val match = markers
+            .mapNotNull { marker ->
+                val idx = text.indexOf(marker)
+                if (idx >= 0) idx to marker else null
+            }
+            .minByOrNull { it.first } ?: return text to null
+        return text.substring(0, match.first) to match.second
     }
 
     private fun List<ChatMessage>.takeLastWithinCharBudget(charBudget: Int): List<ChatMessage> {
@@ -168,14 +202,25 @@ class ChatViewModel(
 
             val existingMessages = chatRepository.messages.first()
             chatRepository.addMessage("user", prompt)
-            val promptForModel = PromptTemplate.buildPrompt(settings.systemPrompt, existingMessages, prompt)
+            val selectedKind = PromptTemplate.resolveKind(model, settings.promptTemplate)
+            val stopMarkers = PromptTemplate.stopMarkers(selectedKind)
+            val promptForModel = PromptTemplate.buildPrompt(selectedKind, settings.systemPrompt, existingMessages, prompt)
             val promptTokenCount = LlamaNativeBridge.countTokens(promptForModel).coerceAtLeast(0)
+            val promptUtf8Length = promptForModel.toByteArray(Charsets.UTF_8).size
+            val promptPreviewStart = promptForModel.take(300)
+            val promptPreviewEnd = promptForModel.takeLast(300)
 
             val builder = StringBuilder()
             streaming.value = ""
             gen.value = GenerationState.Generating
             perf.value = perf.value.copy(
                 promptTokens = promptTokenCount,
+                promptUtf8Length = promptUtf8Length,
+                promptPreviewStart = promptPreviewStart,
+                promptPreviewEnd = promptPreviewEnd,
+                selectedPromptTemplate = PromptTemplate.kindKey(selectedKind),
+                stopReason = "",
+                stopMarker = "",
                 generatedTokens = 0,
                 tokensPerSecond = 0.0,
                 timeToFirstTokenMs = 0L,
@@ -186,6 +231,7 @@ class ChatViewModel(
             var firstTokenMs = 0L
             var emittedChunks = 0
             var stopByMarker = false
+            var stopMarkerMatched: String? = null
 
             runCatching {
                 LlamaNativeBridge.generate(
@@ -202,9 +248,10 @@ class ChatViewModel(
                     }
                     builder.append(token)
                     emittedChunks++
-                    val trimmed = PromptTemplate.cutAtStopMarker(builder.toString())
-                    if (trimmed.length != builder.length) {
+                    val (trimmed, matchedMarker) = PromptTemplate.cutAtStopMarker(builder.toString(), stopMarkers)
+                    if (matchedMarker != null) {
                         stopByMarker = true
+                        stopMarkerMatched = matchedMarker
                         builder.setLength(0)
                         builder.append(trimmed)
                         LlamaNativeBridge.stopGeneration()
@@ -212,7 +259,9 @@ class ChatViewModel(
                     streaming.value = builder.toString()
                     perf.value = perf.value.copy(
                         generatedTokens = emittedChunks,
-                        timeToFirstTokenMs = firstTokenMs
+                        timeToFirstTokenMs = firstTokenMs,
+                        stopReason = if (stopByMarker) "STOP_MARKER" else "",
+                        stopMarker = stopMarkerMatched ?: ""
                     )
                 }
             }.onFailure {
@@ -221,6 +270,10 @@ class ChatViewModel(
                 } else {
                     GenerationState.Error(it.message ?: "GENERATION_FAILED")
                 }
+                perf.value = perf.value.copy(
+                    stopReason = if (gen.value == GenerationState.Canceled) "CANCELED" else "ERROR",
+                    stopMarker = stopMarkerMatched ?: ""
+                )
             }
 
             val finalText = PromptTemplate.cutAtStopMarker(builder.toString()).trim()
@@ -232,7 +285,13 @@ class ChatViewModel(
             perf.value = perf.value.copy(
                 generatedTokens = generatedTokens,
                 tokensPerSecond = (generatedTokens * 1000.0) / totalMs,
-                timeToFirstTokenMs = firstTokenMs
+                timeToFirstTokenMs = firstTokenMs,
+                stopReason = when {
+                    stopByMarker -> "STOP_MARKER"
+                    gen.value == GenerationState.Canceled -> "CANCELED"
+                    else -> "EOS_OR_MAXTOKENS"
+                },
+                stopMarker = stopMarkerMatched ?: ""
             )
             streaming.value = ""
             if (gen.value !is GenerationState.Error && gen.value != GenerationState.Canceled) {

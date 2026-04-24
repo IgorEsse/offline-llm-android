@@ -272,6 +272,31 @@ fun SettingsScreen(vm: SettingsViewModel) {
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+                    Text(
+                        stringResource(R.string.settings_prompt_template),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LanguageButton(
+                            selected = settings.promptTemplate == "auto",
+                            label = stringResource(R.string.prompt_template_auto)
+                        ) { vm.update(settings.copy(promptTemplate = "auto")) }
+                        LanguageButton(
+                            selected = settings.promptTemplate == "tinyllama_chatml",
+                            label = stringResource(R.string.prompt_template_tinyllama)
+                        ) { vm.update(settings.copy(promptTemplate = "tinyllama_chatml")) }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LanguageButton(
+                            selected = settings.promptTemplate == "alpaca",
+                            label = stringResource(R.string.prompt_template_alpaca)
+                        ) { vm.update(settings.copy(promptTemplate = "alpaca")) }
+                        LanguageButton(
+                            selected = settings.promptTemplate == "plain",
+                            label = stringResource(R.string.prompt_template_plain)
+                        ) { vm.update(settings.copy(promptTemplate = "plain")) }
+                    }
                     OutlinedTextField(
                         value = settings.systemPrompt,
                         onValueChange = { vm.update(settings.copy(systemPrompt = it)) },
@@ -437,10 +462,16 @@ fun DiagnosticsScreen(chatViewModel: ChatViewModel) {
             Text(stringResource(R.string.info_status, statusLabel(state.generationState)))
             Text(stringResource(R.string.info_privacy))
             Text(stringResource(R.string.info_prompt_tokens, state.perf.promptTokens))
+            Text(stringResource(R.string.info_prompt_utf8_length, state.perf.promptUtf8Length))
+            Text(stringResource(R.string.info_selected_prompt_template, state.perf.selectedPromptTemplate))
+            Text(stringResource(R.string.info_stop_reason, state.perf.stopReason.ifBlank { stringResource(R.string.info_none) }))
+            Text(stringResource(R.string.info_stop_marker, state.perf.stopMarker.ifBlank { stringResource(R.string.info_none) }))
             Text(stringResource(R.string.info_generated_tokens, state.perf.generatedTokens))
             Text(stringResource(R.string.info_tokens_per_second, String.format("%.2f", state.perf.tokensPerSecond)))
             Text(stringResource(R.string.info_time_to_first_token, state.perf.timeToFirstTokenMs))
             Text(stringResource(R.string.info_model_load_time, state.perf.modelLoadMs))
+            Text(stringResource(R.string.info_prompt_preview_start, state.perf.promptPreviewStart))
+            Text(stringResource(R.string.info_prompt_preview_end, state.perf.promptPreviewEnd))
             Text(
                 stringResource(
                     R.string.info_build,

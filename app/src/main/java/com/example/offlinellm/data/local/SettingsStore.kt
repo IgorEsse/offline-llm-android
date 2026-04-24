@@ -24,6 +24,7 @@ class SettingsStore(private val context: Context) {
         val THREADS = intPreferencesKey("threads")
         val DEFAULT_MODEL = longPreferencesKey("default_model")
         val UI_LANGUAGE = stringPreferencesKey("ui_language")
+        val PROMPT_TEMPLATE = stringPreferencesKey("prompt_template")
     }
 
     val settings: Flow<InferenceSettings> = context.dataStore.data.map { p ->
@@ -37,7 +38,8 @@ class SettingsStore(private val context: Context) {
             contextSize = p[Keys.CONTEXT_SIZE] ?: defaults.contextSize,
             threads = p[Keys.THREADS] ?: defaults.threads,
             defaultModelId = p[Keys.DEFAULT_MODEL],
-            uiLanguage = p[Keys.UI_LANGUAGE] ?: defaults.uiLanguage
+            uiLanguage = p[Keys.UI_LANGUAGE] ?: defaults.uiLanguage,
+            promptTemplate = p[Keys.PROMPT_TEMPLATE] ?: defaults.promptTemplate
         )
     }
 
@@ -51,6 +53,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.CONTEXT_SIZE] = s.contextSize
             p[Keys.THREADS] = s.threads
             p[Keys.UI_LANGUAGE] = s.uiLanguage
+            p[Keys.PROMPT_TEMPLATE] = s.promptTemplate
             s.defaultModelId?.let { p[Keys.DEFAULT_MODEL] = it }
         }
     }

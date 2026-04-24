@@ -35,6 +35,11 @@
     <string name="settings_inference_advanced_section">Advanced</string>
     <string name="settings_show_advanced">Show advanced settings</string>
     <string name="settings_hide_advanced">Hide advanced settings</string>
+    <string name="settings_prompt_template">Prompt template</string>
+    <string name="prompt_template_auto">Auto</string>
+    <string name="prompt_template_tinyllama">TinyLlama/ChatML</string>
+    <string name="prompt_template_alpaca">Alpaca</string>
+    <string name="prompt_template_plain">Plain</string>
     <string name="settings_system_prompt">System prompt</string>
     <string name="settings_system_prompt_hint">Defines assistant behavior for every new answer.</string>
     <string name="settings_temperature">Temperature</string>
@@ -68,10 +73,16 @@
     <string name="info_privacy">Privacy: messages stay on-device.</string>
     <string name="info_none">None</string>
     <string name="info_prompt_tokens">Prompt tokens: %1$d</string>
+    <string name="info_prompt_utf8_length">Prompt UTF-8 length: %1$d</string>
+    <string name="info_selected_prompt_template">Prompt template: %1$s</string>
+    <string name="info_stop_reason">Stop reason: %1$s</string>
+    <string name="info_stop_marker">Stop marker: %1$s</string>
     <string name="info_generated_tokens">Generated tokens: %1$d</string>
     <string name="info_tokens_per_second">Tokens/sec: %1$s</string>
     <string name="info_time_to_first_token">Time to first token: %1$d ms</string>
     <string name="info_model_load_time">Model load time: %1$d ms</string>
+    <string name="info_prompt_preview_start">Prompt preview start: %1$s</string>
+    <string name="info_prompt_preview_end">Prompt preview end: %1$s</string>
     <string name="info_build">Build: v%1$s (%2$d), %3$s, %4$s</string>
 
     <string name="error_no_model">No active model selected</string>
