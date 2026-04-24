@@ -276,7 +276,11 @@ class ChatViewModel(
                 )
             }
 
-            val finalText = PromptTemplate.cutAtStopMarker(builder.toString()).trim()
+            val (finalTextRaw, finalMarker) = PromptTemplate.cutAtStopMarker(builder.toString(), stopMarkers)
+            if (stopMarkerMatched == null && finalMarker != null) {
+                stopMarkerMatched = finalMarker
+            }
+            val finalText = finalTextRaw.trim()
             if (finalText.isNotBlank()) {
                 chatRepository.addMessage("assistant", finalText)
             }
