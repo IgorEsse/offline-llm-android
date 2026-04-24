@@ -1,3 +1,6 @@
+import java.io.ByteArrayOutputStream
+import java.time.Instant
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,7 +8,7 @@ plugins {
 }
 
 fun gitHash(): String = try {
-    val stdout = java.io.ByteArrayOutputStream()
+    val stdout = ByteArrayOutputStream()
     exec {
         commandLine("git", "rev-parse", "--short", "HEAD")
         standardOutput = stdout
@@ -15,7 +18,7 @@ fun gitHash(): String = try {
     "unknown"
 }
 
-val buildTimeUtc: String = java.time.Instant.now().toString()
+val buildTimeUtc: String = Instant.now().toString()
 
 android {
     namespace = "com.example.offlinellm"
