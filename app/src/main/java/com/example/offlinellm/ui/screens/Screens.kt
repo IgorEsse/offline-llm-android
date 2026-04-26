@@ -2,6 +2,10 @@ package com.example.offlinellm.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -19,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,12 +33,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -115,17 +123,10 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .padding(8.dp),
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .imePadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        ScreenCard {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.chat_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.chat_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                StatusLine(state.generationState)
-            }
-        }
-
         if (state.activeModel == null) {
             ScreenCard {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -144,72 +145,104 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
         ) {
             items(state.messages) { msg ->
                 val isUser = msg.role.equals("user", ignoreCase = true)
-                val bubbleColor = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
-                Card(
+                val bubbleColor = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = bubbleColor),
-                    shape = RoundedCornerShape(18.dp)
+                    horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
                 ) {
-                    Text(
-                        text = "${if (isUser) stringResource(R.string.chat_role_user) else stringResource(R.string.chat_role_assistant)}: ${msg.content}",
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(0.84f),
+                        colors = CardDefaults.cardColors(containerColor = bubbleColor),
+                        shape = RoundedCornerShape(
+                            topStart = 18.dp,
+                            topEnd = 18.dp,
+                            bottomStart = if (isUser) 18.dp else 6.dp,
+                            bottomEnd = if (isUser) 6.dp else 18.dp
+                        )
+                    ) {
+                        Text(
+                            text = msg.content,
+                            modifier = Modifier.padding(12.dp),
+                            color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
 
             if (state.streamingText.isNotBlank()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                        shape = RoundedCornerShape(18.dp)
-                    ) {
-                        Text(
-                            text = "${stringResource(R.string.chat_role_assistant)}: ${state.streamingText}",
-                            modifier = Modifier.padding(12.dp)
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(0.84f),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Text(
+                                text = state.streamingText,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isGenerating && state.streamingText.isBlank()) {
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(0.30f),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            TypingIndicator()
+                        }
                     }
                 }
             }
         }
 
         ScreenCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = state.input,
                     onValueChange = vm::onInputChanged,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     label = { Text(stringResource(R.string.chat_input_label)) },
-                    enabled = state.activeModel != null,
-                    shape = RoundedCornerShape(16.dp)
+                    enabled = state.activeModel != null && !isLoading,
+                    shape = RoundedCornerShape(20.dp),
+                    minLines = 1,
+                    maxLines = 4
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = vm::send,
-                        enabled = !isBusy && state.activeModel != null,
-                        shape = RoundedCornerShape(12.dp)
-                    ) { Text(stringResource(R.string.send_button)) }
-
-                    if (isGenerating) {
-                        Button(onClick = vm::stopGeneration, shape = RoundedCornerShape(12.dp)) {
-                            Text(stringResource(R.string.stop_button))
-                        }
-                    }
-
-                    Button(onClick = vm::clearChat, shape = RoundedCornerShape(12.dp)) {
-                        Text(stringResource(R.string.clear_button))
-                    }
-
-                    AnimatedVisibility(visible = isBusy) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(Modifier.width(4.dp))
-                            CircularProgressIndicator(modifier = Modifier.width(20.dp), strokeWidth = 2.dp)
-                        }
-                    }
+                Button(
+                    onClick = if (isGenerating) vm::stopGeneration else vm::send,
+                    enabled = state.activeModel != null && (!isBusy || isGenerating),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isGenerating) Icons.Default.Stop else Icons.Default.Send,
+                        contentDescription = if (isGenerating) stringResource(R.string.stop_button) else stringResource(R.string.send_button)
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TypingIndicator() {
+    val transition = rememberInfiniteTransition(label = "typing")
+    val a1 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550), RepeatMode.Reverse), label = "dot1")
+    val a2 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550, delayMillis = 120), RepeatMode.Reverse), label = "dot2")
+    val a3 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550, delayMillis = 240), RepeatMode.Reverse), label = "dot3")
+    Row(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a1.value))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a2.value))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a3.value))
     }
 }
 

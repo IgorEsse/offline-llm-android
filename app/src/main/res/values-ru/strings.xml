@@ -5,6 +5,7 @@
     <string name="tab_models">Модели</string>
     <string name="tab_settings">Настройки</string>
     <string name="tab_info">Инфо</string>
+    <string name="open_unified_settings">Открыть панель настроек</string>
 
     <string name="chat_title">Локальный чат</string>
     <string name="chat_subtitle">Ваши сообщения остаются на этом устройстве.</string>

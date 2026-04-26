@@ -10,29 +10,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class TabItem(
+private data class SheetTabItem(
     val labelRes: Int,
     val icon: @Composable () -> Unit
 )
@@ -70,7 +70,8 @@ private data class TabItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Root(factory: AppViewModelFactory) {
-    var tab by remember { mutableIntStateOf(0) }
+    var showSheet by remember { mutableStateOf(false) }
+    var sheetTab by remember { mutableIntStateOf(0) }
     val chatVm: ChatViewModel = viewModel(factory = factory)
     val modelVm: ModelViewModel = viewModel(factory = factory)
     val settingsVm: SettingsViewModel = viewModel(factory = factory)
@@ -80,11 +81,10 @@ private fun Root(factory: AppViewModelFactory) {
         LocaleManager.applyLanguage(settings.uiLanguage)
     }
 
-    val tabs = listOf(
-        TabItem(R.string.tab_chat) { Icon(Icons.Default.Chat, contentDescription = null) },
-        TabItem(R.string.tab_models) { Icon(Icons.Default.Folder, contentDescription = null) },
-        TabItem(R.string.tab_settings) { Icon(Icons.Default.Settings, contentDescription = null) },
-        TabItem(R.string.tab_info) { Icon(Icons.Default.Info, contentDescription = null) }
+    val sheetTabs = listOf(
+        SheetTabItem(R.string.tab_models) { Icon(Icons.Default.Folder, contentDescription = null) },
+        SheetTabItem(R.string.tab_settings) { Icon(Icons.Default.Settings, contentDescription = null) },
+        SheetTabItem(R.string.tab_info) { Icon(Icons.Default.Info, contentDescription = null) }
     )
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -102,44 +102,52 @@ private fun Root(factory: AppViewModelFactory) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(tabs[tab].labelRes)) },
+                title = { Text(stringResource(R.string.app_name)) },
+                actions = {
+                    IconButton(onClick = { showSheet = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.open_unified_settings))
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
-                    titleContentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        },
-        bottomBar = {
-            Surface(
-                tonalElevation = 2.dp,
-                shadowElevation = 6.dp,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-            ) {
-                NavigationBar {
-                    tabs.forEachIndexed { i, item ->
-                        NavigationBarItem(
-                            selected = tab == i,
-                            onClick = { tab = i },
-                            label = { Text(stringResource(item.labelRes)) },
-                            icon = item.icon
-                        )
-                    }
-                }
-            }
         }
     ) { pad ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(bgBrush)
-                .padding(pad)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            when (tab) {
-                0 -> ChatScreen(chatVm, onOpenModels = { tab = 1 })
-                1 -> ModelScreen(modelVm, onImport = { picker.launch(arrayOf("*/*")) })
-                2 -> SettingsScreen(settingsVm)
-                else -> DiagnosticsScreen(chatVm)
+        ChatScreen(
+            vm = chatVm,
+            onOpenModels = {
+                sheetTab = 0
+                showSheet = true
+            }
+        )
+
+        if (showSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    PrimaryTabRow(selectedTabIndex = sheetTab) {
+                        sheetTabs.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = sheetTab == index,
+                                onClick = { sheetTab = index },
+                                text = { Text(stringResource(tab.labelRes)) },
+                                icon = tab.icon
+                            )
+                        }
+                    }
+                    when (sheetTab) {
+                        0 -> ModelScreen(modelVm, onImport = { picker.launch(arrayOf("*/*")) })
+                        1 -> SettingsScreen(settingsVm)
+                        else -> DiagnosticsScreen(chatVm)
+                    }
+                }
             }
         }
     }
