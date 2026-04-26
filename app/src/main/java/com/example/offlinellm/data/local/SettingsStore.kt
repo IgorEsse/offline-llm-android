@@ -23,18 +23,23 @@ class SettingsStore(private val context: Context) {
         val CONTEXT_SIZE = intPreferencesKey("context_size")
         val THREADS = intPreferencesKey("threads")
         val DEFAULT_MODEL = longPreferencesKey("default_model")
+        val UI_LANGUAGE = stringPreferencesKey("ui_language")
+        val PROMPT_TEMPLATE = stringPreferencesKey("prompt_template")
     }
 
     val settings: Flow<InferenceSettings> = context.dataStore.data.map { p ->
+        val defaults = InferenceSettings()
         InferenceSettings(
-            systemPrompt = p[Keys.SYSTEM_PROMPT] ?: InferenceSettings().systemPrompt,
-            temperature = p[Keys.TEMPERATURE] ?: 0.7f,
-            topK = p[Keys.TOP_K] ?: 40,
-            topP = p[Keys.TOP_P] ?: 0.95f,
-            maxTokens = p[Keys.MAX_TOKENS] ?: 256,
-            contextSize = p[Keys.CONTEXT_SIZE] ?: 2048,
-            threads = p[Keys.THREADS] ?: 4,
-            defaultModelId = p[Keys.DEFAULT_MODEL]
+            systemPrompt = p[Keys.SYSTEM_PROMPT] ?: defaults.systemPrompt,
+            temperature = p[Keys.TEMPERATURE] ?: defaults.temperature,
+            topK = p[Keys.TOP_K] ?: defaults.topK,
+            topP = p[Keys.TOP_P] ?: defaults.topP,
+            maxTokens = p[Keys.MAX_TOKENS] ?: defaults.maxTokens,
+            contextSize = p[Keys.CONTEXT_SIZE] ?: defaults.contextSize,
+            threads = p[Keys.THREADS] ?: defaults.threads,
+            defaultModelId = p[Keys.DEFAULT_MODEL],
+            uiLanguage = p[Keys.UI_LANGUAGE] ?: defaults.uiLanguage,
+            promptTemplate = p[Keys.PROMPT_TEMPLATE] ?: defaults.promptTemplate
         )
     }
 
@@ -47,6 +52,8 @@ class SettingsStore(private val context: Context) {
             p[Keys.MAX_TOKENS] = s.maxTokens
             p[Keys.CONTEXT_SIZE] = s.contextSize
             p[Keys.THREADS] = s.threads
+            p[Keys.UI_LANGUAGE] = s.uiLanguage
+            p[Keys.PROMPT_TEMPLATE] = s.promptTemplate
             s.defaultModelId?.let { p[Keys.DEFAULT_MODEL] = it }
         }
     }
