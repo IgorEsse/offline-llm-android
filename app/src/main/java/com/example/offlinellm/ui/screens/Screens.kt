@@ -11,6 +11,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -67,6 +69,7 @@ import com.example.offlinellm.domain.GenerationState
 import com.example.offlinellm.viewmodel.ChatViewModel
 import com.example.offlinellm.viewmodel.ModelViewModel
 import com.example.offlinellm.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun ModelScreen(vm: ModelViewModel, onImport: () -> Unit) {
@@ -121,6 +124,7 @@ fun ModelScreen(vm: ModelViewModel, onImport: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
