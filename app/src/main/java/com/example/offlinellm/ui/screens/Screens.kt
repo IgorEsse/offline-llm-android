@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -45,8 +48,12 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -116,6 +123,9 @@ fun ModelScreen(vm: ModelViewModel, onImport: () -> Unit) {
 @Composable
 fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     val isLoading = state.generationState is GenerationState.LoadingModel
     val isGenerating = state.generationState is GenerationState.Generating
     val isBusy = isLoading || isGenerating
@@ -146,6 +156,7 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
             items(state.messages) { msg ->
                 val isUser = msg.role.equals("user", ignoreCase = true)
                 val bubbleColor = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
+                var menuOpen by remember { mutableStateOf(false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
@@ -162,8 +173,41 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
                     ) {
                         Text(
                             text = msg.content,
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .combinedClickable(
+                                    onClick = {},
+                                    onLongClick = { menuOpen = true }
+                                ),
                             color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy_message)) },
+                            onClick = {
+                                clipboard.setText(AnnotatedString(msg.content))
+                                android.widget.Toast.makeText(context, context.getString(R.string.copied), android.widget.Toast.LENGTH_SHORT).show()
+                                menuOpen = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy_conversation)) },
+                            onClick = {
+                                scope.launch {
+                                    val full = vm.exportActiveConversation()
+                                    clipboard.setText(AnnotatedString(full))
+                                    android.widget.Toast.makeText(context, context.getString(R.string.copied), android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                                menuOpen = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete_message)) },
+                            onClick = {
+                                vm.deleteMessage(msg.id)
+                                menuOpen = false
+                            }
                         )
                     }
                 }
@@ -221,7 +265,8 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
                 ) {
                     Icon(
                         imageVector = if (isGenerating) Icons.Default.Stop else Icons.Default.Send,
-                        contentDescription = if (isGenerating) stringResource(R.string.stop_button) else stringResource(R.string.send_button)
+                        contentDescription = if (isGenerating) stringResource(R.string.stop_button) else stringResource(R.string.send_button),
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }

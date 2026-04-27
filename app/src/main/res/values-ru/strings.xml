@@ -6,6 +6,20 @@
     <string name="tab_settings">Настройки</string>
     <string name="tab_info">Инфо</string>
     <string name="open_unified_settings">Открыть панель настроек</string>
+    <string name="open_chats">Открыть беседы</string>
+    <string name="drawer_chats_title">Беседы</string>
+    <string name="drawer_new_chat">Новая беседа</string>
+    <string name="drawer_no_chats">Бесед пока нет</string>
+    <string name="drawer_rename">Переименовать</string>
+    <string name="drawer_delete">Удалить</string>
+    <string name="drawer_clear_chat">Очистить беседу</string>
+    <string name="copy_message">Копировать сообщение</string>
+    <string name="copy_conversation">Копировать беседу</string>
+    <string name="copied">Скопировано</string>
+    <string name="delete_message">Удалить сообщение</string>
+    <string name="delete_conversation_title">Удалить беседу</string>
+    <string name="delete_conversation_confirm">Вы действительно хотите удалить эту беседу?</string>
+    <string name="cancel_button">Отмена</string>
 
     <string name="chat_title">Локальный чат</string>
     <string name="chat_subtitle">Ваши сообщения остаются на этом устройстве.</string>

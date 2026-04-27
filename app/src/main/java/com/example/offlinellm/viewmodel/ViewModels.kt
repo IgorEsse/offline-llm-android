@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.offlinellm.domain.ChatMessage
 import com.example.offlinellm.domain.ChatRepository
+import com.example.offlinellm.domain.ConversationInfo
 import com.example.offlinellm.domain.GenerationState
 import com.example.offlinellm.domain.InferenceSettings
 import com.example.offlinellm.domain.ModelInfo
@@ -23,6 +24,8 @@ import java.util.Locale
 
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
+    val conversations: List<ConversationInfo> = emptyList(),
+    val activeConversationId: Long? = null,
     val input: String = "",
     val generationState: GenerationState = GenerationState.Idle,
     val activeModel: ModelInfo? = null,
@@ -153,6 +156,7 @@ class ChatViewModel(
 
     val uiState: StateFlow<ChatUiState> = combine(
         chatRepository.messages,
+        chatRepository.conversations,
         input,
         gen,
         modelRepository.models,
@@ -160,13 +164,29 @@ class ChatViewModel(
         perf
     ) { values ->
         val messages = values[0] as List<ChatMessage>
-        val inputText = values[1] as String
-        val generation = values[2] as GenerationState
-        val models = values[3] as List<ModelInfo>
-        val streamingText = values[4] as String
-        val perfState = values[5] as GenerationPerfStats
-        ChatUiState(messages, inputText, generation, models.firstOrNull { it.isActive }, streamingText, perfState)
+        val conversations = values[1] as List<ConversationInfo>
+        val inputText = values[2] as String
+        val generation = values[3] as GenerationState
+        val models = values[4] as List<ModelInfo>
+        val streamingText = values[5] as String
+        val perfState = values[6] as GenerationPerfStats
+        ChatUiState(
+            messages = messages,
+            conversations = conversations,
+            activeConversationId = conversations.firstOrNull { it.isActive }?.id,
+            input = inputText,
+            generationState = generation,
+            activeModel = models.firstOrNull { it.isActive },
+            streamingText = streamingText,
+            perf = perfState
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChatUiState())
+
+    init {
+        viewModelScope.launch {
+            chatRepository.ensureConversation()
+        }
+    }
 
     fun onInputChanged(value: String) {
         input.value = value
@@ -178,6 +198,10 @@ class ChatViewModel(
         input.value = ""
 
         viewModelScope.launch {
+            val conversation = chatRepository.ensureConversation()
+            if (chatRepository.exportConversationText(conversation.id).isBlank()) {
+                chatRepository.renameConversation(conversation.id, autoTitle(prompt))
+            }
             val model = modelRepository.getActiveModel() ?: run {
                 gen.value = GenerationState.Error("NO_MODEL")
                 return@launch
@@ -201,7 +225,7 @@ class ChatViewModel(
             }
 
             val existingMessages = chatRepository.messages.first()
-            chatRepository.addMessage("user", prompt)
+            chatRepository.addMessage(conversation.id, "user", prompt)
             val selectedKind = PromptTemplate.resolveKind(model, settings.promptTemplate)
             val stopMarkers = PromptTemplate.stopMarkers(selectedKind)
             val promptForModel = PromptTemplate.buildPrompt(selectedKind, settings.systemPrompt, existingMessages, prompt)
@@ -282,7 +306,7 @@ class ChatViewModel(
             }
             val finalText = finalTextRaw.trim()
             if (finalText.isNotBlank()) {
-                chatRepository.addMessage("assistant", finalText)
+                chatRepository.addMessage(conversation.id, "assistant", finalText)
             }
             val totalMs = (SystemClock.elapsedRealtime() - generationStart).coerceAtLeast(1L)
             val generatedTokens = LlamaNativeBridge.countTokens(finalText).takeIf { it >= 0 } ?: emittedChunks
@@ -309,7 +333,45 @@ class ChatViewModel(
         gen.value = GenerationState.Canceled
     }
 
-    fun clearChat() = viewModelScope.launch { chatRepository.clear() }
+    fun clearChat() = viewModelScope.launch {
+        chatRepository.activeConversation()?.let { chatRepository.clearConversation(it.id) }
+    }
+
+    fun createConversation() = viewModelScope.launch {
+        chatRepository.createConversation("")
+    }
+
+    fun selectConversation(id: Long) = viewModelScope.launch {
+        if (gen.value == GenerationState.Generating) return@launch
+        chatRepository.setActiveConversation(id)
+    }
+
+    fun renameConversation(id: Long, title: String) = viewModelScope.launch {
+        chatRepository.renameConversation(id, title)
+    }
+
+    fun deleteConversation(id: Long) = viewModelScope.launch {
+        if (gen.value == GenerationState.Generating) return@launch
+        chatRepository.deleteConversation(id)
+    }
+
+    fun clearConversation(id: Long) = viewModelScope.launch {
+        chatRepository.clearConversation(id)
+    }
+
+    fun deleteMessage(messageId: Long) = viewModelScope.launch {
+        chatRepository.deleteMessage(messageId)
+    }
+
+    suspend fun exportActiveConversation(): String {
+        val active = chatRepository.activeConversation() ?: return ""
+        return chatRepository.exportConversationText(active.id)
+    }
+
+    private fun autoTitle(firstMessage: String): String {
+        val oneLine = firstMessage.trim().replace('\n', ' ')
+        return oneLine.take(56).ifBlank { "New chat" }
+    }
 }
 
 class ModelViewModel(private val modelRepository: ModelRepository) : ViewModel() {

@@ -16,9 +16,19 @@ data class ModelInfo(
 
 data class ChatMessage(
     val id: Long,
+    val conversationId: Long,
     val role: String,
     val content: String,
     val timestamp: Long
+)
+
+data class ConversationInfo(
+    val id: Long,
+    val title: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastMessagePreview: String,
+    val isActive: Boolean
 )
 
 data class InferenceSettings(
@@ -52,7 +62,18 @@ interface ModelRepository {
 
 interface ChatRepository {
     val messages: Flow<List<ChatMessage>>
+    val conversations: Flow<List<ConversationInfo>>
+    suspend fun createConversation(title: String = ""): ConversationInfo
+    suspend fun ensureConversation(): ConversationInfo
+    suspend fun setActiveConversation(id: Long)
+    suspend fun renameConversation(id: Long, title: String)
+    suspend fun deleteConversation(id: Long)
+    suspend fun clearConversation(id: Long)
     suspend fun addMessage(role: String, content: String)
+    suspend fun addMessage(conversationId: Long, role: String, content: String)
+    suspend fun deleteMessage(messageId: Long)
+    suspend fun exportConversationText(conversationId: Long): String
+    suspend fun activeConversation(): ConversationInfo?
     suspend fun clear()
 }
 
