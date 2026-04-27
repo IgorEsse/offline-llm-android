@@ -6,11 +6,13 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.room.Room
 import com.example.offlinellm.data.local.AppDatabase
+import com.example.offlinellm.data.local.ConversationEntity
 import com.example.offlinellm.data.local.MessageEntity
 import com.example.offlinellm.data.local.ModelEntity
 import com.example.offlinellm.data.local.SettingsStore
 import com.example.offlinellm.domain.ChatMessage
 import com.example.offlinellm.domain.ChatRepository
+import com.example.offlinellm.domain.ConversationInfo
 import com.example.offlinellm.domain.InferenceSettings
 import com.example.offlinellm.domain.ModelInfo
 import com.example.offlinellm.domain.ModelRepository
@@ -18,6 +20,7 @@ import com.example.offlinellm.domain.SettingsRepository
 import com.example.offlinellm.nativebridge.LlamaNativeBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
@@ -25,7 +28,9 @@ import java.io.File
 import java.security.MessageDigest
 
 class AppGraph(context: Context) {
-    val db = Room.databaseBuilder(context, AppDatabase::class.java, "offline_llm.db").build()
+    val db = Room.databaseBuilder(context, AppDatabase::class.java, "offline_llm.db")
+        .fallbackToDestructiveMigration()
+        .build()
     val settingsStore = SettingsStore(context)
     val modelRepository = DefaultModelRepository(context, db, settingsStore)
     val chatRepository = DefaultChatRepository(db)
@@ -114,16 +119,101 @@ class DefaultModelRepository(
 }
 
 class DefaultChatRepository(private val db: AppDatabase) : ChatRepository {
-    override val messages: Flow<List<ChatMessage>> = db.messageDao().observeAll().map { rows ->
-        rows.map { ChatMessage(it.id, it.role, it.content, it.timestamp) }
+    override val conversations: Flow<List<ConversationInfo>> =
+        db.conversationDao().observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    override val messages: Flow<List<ChatMessage>> =
+        db.conversationDao().observeAll().flatMapLatest { conversations ->
+            val activeId = conversations.firstOrNull { it.isActive }?.id ?: conversations.firstOrNull()?.id ?: -1L
+            db.messageDao().observeByConversation(activeId)
+        }.map { rows ->
+            rows.map { ChatMessage(it.id, it.conversationId, it.role, it.content, it.timestamp) }
+        }
+
+    override suspend fun createConversation(title: String): ConversationInfo {
+        val now = System.currentTimeMillis()
+        val cleanTitle = title.ifBlank { "New chat" }
+        val id = db.conversationDao().insert(
+            ConversationEntity(
+                title = cleanTitle,
+                createdAt = now,
+                updatedAt = now,
+                lastMessagePreview = "",
+                isActive = false
+            )
+        )
+        db.conversationDao().setActive(id)
+        return requireNotNull(db.conversationDao().byId(id)).toDomain()
+    }
+
+    override suspend fun ensureConversation(): ConversationInfo {
+        db.conversationDao().active()?.let { return it.toDomain() }
+        if (db.conversationDao().count() == 0) {
+            return createConversation("")
+        }
+        val first = db.conversationDao().observeAll().first().first()
+        db.conversationDao().setActive(first.id)
+        return requireNotNull(db.conversationDao().byId(first.id)).toDomain()
+    }
+
+    override suspend fun setActiveConversation(id: Long) {
+        db.conversationDao().setActive(id)
+    }
+
+    override suspend fun renameConversation(id: Long, title: String) {
+        db.conversationDao().rename(id, title.ifBlank { "New chat" }, System.currentTimeMillis())
+    }
+
+    override suspend fun deleteConversation(id: Long) {
+        db.messageDao().deleteByConversation(id)
+        db.conversationDao().delete(id)
+        val all = db.conversationDao().observeAll().first()
+        if (all.isEmpty()) {
+            createConversation("")
+        } else if (all.none { it.isActive }) {
+            db.conversationDao().setActive(all.first().id)
+        }
+    }
+
+    override suspend fun clearConversation(id: Long) {
+        db.messageDao().clear(id)
+        db.conversationDao().touch(id, System.currentTimeMillis(), "")
     }
 
     override suspend fun addMessage(role: String, content: String) {
-        db.messageDao().insert(MessageEntity(role = role, content = content, timestamp = System.currentTimeMillis()))
+        val conv = ensureConversation()
+        addMessage(conv.id, role, content)
+    }
+
+    override suspend fun addMessage(conversationId: Long, role: String, content: String) {
+        db.messageDao().insert(
+            MessageEntity(
+                conversationId = conversationId,
+                role = role,
+                content = content,
+                timestamp = System.currentTimeMillis()
+            )
+        )
+        db.conversationDao().touch(conversationId, System.currentTimeMillis(), content.take(120))
+    }
+
+    override suspend fun deleteMessage(messageId: Long) {
+        val conv = activeConversation() ?: return
+        db.messageDao().deleteMessage(conv.id, messageId)
+    }
+
+    override suspend fun exportConversationText(conversationId: Long): String {
+        return db.messageDao().listByConversation(conversationId)
+            .joinToString("\n") { "${it.role.replaceFirstChar(Char::uppercaseChar)}: ${it.content}" }
+    }
+
+    override suspend fun activeConversation(): ConversationInfo? {
+        return db.conversationDao().active()?.toDomain()
     }
 
     override suspend fun clear() {
-        db.messageDao().clear()
+        val active = activeConversation() ?: return
+        clearConversation(active.id)
     }
 }
 
@@ -136,3 +226,4 @@ class DefaultSettingsRepository(private val store: SettingsStore) : SettingsRepo
 }
 
 private fun ModelEntity.toDomain() = ModelInfo(id, filename, path, sizeBytes, checksum, architecture, metadata, importedAt, isActive)
+private fun ConversationEntity.toDomain() = ConversationInfo(id, title, createdAt, updatedAt, lastMessagePreview, isActive)

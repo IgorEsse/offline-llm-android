@@ -16,20 +16,32 @@ data class ModelInfo(
 
 data class ChatMessage(
     val id: Long,
+    val conversationId: Long,
     val role: String,
     val content: String,
     val timestamp: Long
 )
 
+data class ConversationInfo(
+    val id: Long,
+    val title: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastMessagePreview: String,
+    val isActive: Boolean
+)
+
 data class InferenceSettings(
-    val systemPrompt: String = "You are a concise helpful assistant.",
-    val temperature: Float = 0.7f,
+    val systemPrompt: String = "You are a helpful assistant. Answer clearly and briefly.",
+    val temperature: Float = 0.3f,
     val topK: Int = 40,
-    val topP: Float = 0.95f,
-    val maxTokens: Int = 256,
-    val contextSize: Int = 2048,
+    val topP: Float = 0.9f,
+    val maxTokens: Int = 64,
+    val contextSize: Int = 1024,
     val threads: Int = 4,
-    val defaultModelId: Long? = null
+    val defaultModelId: Long? = null,
+    val uiLanguage: String = "system",
+    val promptTemplate: String = "auto"
 )
 
 sealed interface GenerationState {
@@ -50,7 +62,18 @@ interface ModelRepository {
 
 interface ChatRepository {
     val messages: Flow<List<ChatMessage>>
+    val conversations: Flow<List<ConversationInfo>>
+    suspend fun createConversation(title: String = ""): ConversationInfo
+    suspend fun ensureConversation(): ConversationInfo
+    suspend fun setActiveConversation(id: Long)
+    suspend fun renameConversation(id: Long, title: String)
+    suspend fun deleteConversation(id: Long)
+    suspend fun clearConversation(id: Long)
     suspend fun addMessage(role: String, content: String)
+    suspend fun addMessage(conversationId: Long, role: String, content: String)
+    suspend fun deleteMessage(messageId: Long)
+    suspend fun exportConversationText(conversationId: Long): String
+    suspend fun activeConversation(): ConversationInfo?
     suspend fun clear()
 }
 
