@@ -209,8 +209,9 @@ private fun Root(factory: AppViewModelFactory) {
                     )
                 )
             }
-        ) {
+        ) { pad ->
             ChatScreen(
+                modifier = Modifier.padding(pad),
                 vm = chatVm,
                 onOpenModels = {
                     sheetTab = 0

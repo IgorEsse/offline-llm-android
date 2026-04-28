@@ -125,7 +125,7 @@ fun ModelScreen(vm: ModelViewModel, onImport: () -> Unit) {
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
+fun ChatScreen(modifier: Modifier = Modifier, vm: ChatViewModel, onOpenModels: () -> Unit) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -135,7 +135,7 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
     val isBusy = isLoading || isGenerating
 
     Column(
-        Modifier
+        modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp, vertical = 6.dp)
             .imePadding(),
@@ -155,11 +155,16 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
 
         LazyColumn(
             modifier = Modifier.weight(1f),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 4.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(state.messages) { msg ->
                 val isUser = msg.role.equals("user", ignoreCase = true)
-                val bubbleColor = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
+                val bubbleColor = if (isUser) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.88f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.82f)
+                }
                 var menuOpen by remember { mutableStateOf(false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -270,7 +275,7 @@ fun ChatScreen(vm: ChatViewModel, onOpenModels: () -> Unit) {
                     Icon(
                         imageVector = if (isGenerating) Icons.Default.Stop else Icons.Default.Send,
                         contentDescription = if (isGenerating) stringResource(R.string.stop_button) else stringResource(R.string.send_button),
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(34.dp)
                     )
                 }
             }
@@ -573,7 +578,7 @@ private fun ScreenCard(modifier: Modifier = Modifier, content: @Composable () ->
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.74f),
         shadowElevation = 4.dp,
         shape = RoundedCornerShape(20.dp)
     ) {

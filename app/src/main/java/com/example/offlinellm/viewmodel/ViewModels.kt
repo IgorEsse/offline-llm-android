@@ -52,6 +52,18 @@ private object PromptTemplate {
     private const val historyCharBudget = 1200
     enum class Kind { AUTO, TINYLLAMA_CHATML, ALPACA, PLAIN }
 
+    private val universalLeakMarkers = listOf(
+        "### System:",
+        "### User:",
+        "### Assistant:",
+        "\nSystem:",
+        "\nUser:",
+        "\nAssistant:",
+        "<|im_start|>system",
+        "<|im_start|>user",
+        "<|system|>",
+        "<|user|>"
+    )
     private val tinyLlamaStopMarkers = listOf("</s>", "<|user|>", "<|system|>")
     private val alpacaStopMarkers = listOf("\n### Instruction:", "\n### User:", "\n### System:")
     private val plainStopMarkers = listOf("\nUser:", "\n### User:")
@@ -112,11 +124,11 @@ private object PromptTemplate {
         return sb.toString()
     }
 
-    fun stopMarkers(kind: Kind): List<String> = when (kind) {
+    fun stopMarkers(kind: Kind): List<String> = (when (kind) {
         Kind.TINYLLAMA_CHATML -> tinyLlamaStopMarkers
         Kind.ALPACA -> alpacaStopMarkers
         Kind.PLAIN, Kind.AUTO -> plainStopMarkers
-    }
+    } + universalLeakMarkers).distinct()
 
     fun cutAtStopMarker(text: String, markers: List<String>): Pair<String, String?> {
         val match = markers
@@ -126,6 +138,11 @@ private object PromptTemplate {
             }
             .minByOrNull { it.first } ?: return text to null
         return text.substring(0, match.first) to match.second
+    }
+
+    fun sanitizeAssistantOutput(text: String, markers: List<String>): String {
+        val (trimmed, _) = cutAtStopMarker(text, markers)
+        return trimmed.trim()
     }
 
     private fun List<ChatMessage>.takeLastWithinCharBudget(charBudget: Int): List<ChatMessage> {
@@ -304,7 +321,7 @@ class ChatViewModel(
             if (stopMarkerMatched == null && finalMarker != null) {
                 stopMarkerMatched = finalMarker
             }
-            val finalText = finalTextRaw.trim()
+            val finalText = PromptTemplate.sanitizeAssistantOutput(finalTextRaw, stopMarkers)
             if (finalText.isNotBlank()) {
                 chatRepository.addMessage(conversation.id, "assistant", finalText)
             }
