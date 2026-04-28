@@ -24,6 +24,13 @@ JNI API exposed to Kotlin:
 
 Native code is isolated in `llama_jni.cpp`; UI never touches llama.cpp types directly.
 
+### Source of truth for llama.cpp
+- `third_party/llama.cpp` is a **build-time dependency path**.
+- You can provide it either by:
+  - adding a git submodule locally, or
+  - cloning a compatible llama.cpp revision into that folder.
+- CMake fails with a clear setup hint if the folder is missing/incomplete.
+
 
 ## Repository note (PR tooling)
 In this environment, PR tooling does not accept binary files.
@@ -32,9 +39,9 @@ After cloning, run `gradle wrapper --gradle-version 8.7` once to regenerate it l
 
 ## Build instructions (Android Studio)
 1. Install Android Studio (Hedgehog+), Android SDK 34, NDK 26+, CMake 3.22.1.
-2. Add llama.cpp into `third_party/llama.cpp`.
-   - Suggested: git submodule
-   - `git submodule add https://github.com/ggerganov/llama.cpp third_party/llama.cpp`
+2. Provide llama.cpp source at `third_party/llama.cpp`:
+   - Option A: `git submodule add https://github.com/ggerganov/llama.cpp third_party/llama.cpp`
+   - Option B: clone/copy a compatible llama.cpp tree into that path.
 3. Open project in Android Studio.
 4. Sync Gradle.
 5. Build/run on arm64-v8a device.
@@ -43,6 +50,7 @@ After cloning, run `gradle wrapper --gradle-version 8.7` once to regenerate it l
 - ABI: **arm64-v8a only** for MVP.
 - CMake links app shared library against llama.cpp target.
 - Native generation runs on background thread and streams tokens via callback.
+- llama.cpp is used at **build time** for native compilation. The APK contains only compiled `.so` binaries, not llama.cpp source/docs/tests.
 
 ## Model import flow
 1. User taps **Import GGUF model**.

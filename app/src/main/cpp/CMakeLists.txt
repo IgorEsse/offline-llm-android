@@ -9,6 +9,13 @@ add_library(offline_llm SHARED
 
 set(LLAMA_ROOT ${CMAKE_SOURCE_DIR}/../../../../third_party/llama.cpp)
 
+if (NOT EXISTS ${LLAMA_ROOT}/CMakeLists.txt)
+    message(FATAL_ERROR
+        "llama.cpp was not found in ${LLAMA_ROOT}. "
+        "Provide llama.cpp sources there (via submodule or local clone)."
+    )
+endif()
+
 add_subdirectory(${LLAMA_ROOT} ${CMAKE_BINARY_DIR}/llama)
 
 target_include_directories(offline_llm PRIVATE ${LLAMA_ROOT}/include)
