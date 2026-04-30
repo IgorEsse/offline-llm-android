@@ -45,7 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.rememberDrawerState
@@ -68,6 +68,8 @@ import com.example.offlinellm.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,9 +206,16 @@ private fun Root(factory: AppViewModelFactory) {
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
                         titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    ),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp))
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                            RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
+                        )
                 )
             }
         ) { pad ->

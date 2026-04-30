@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,6 +60,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -134,10 +139,22 @@ fun ChatScreen(modifier: Modifier = Modifier, vm: ChatViewModel, onOpenModels: (
     val isGenerating = state.generationState is GenerationState.Generating
     val isBusy = isLoading || isGenerating
 
-    Column(
-        modifier
+    val bg = Brush.verticalGradient(
+        listOf(
+            Color(0xFF0A1020),
+            Color(0xFF11192B),
+            Color(0xFF141D32)
+        )
+    )
+    Box(
+        modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .background(bg)
+    ) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp, vertical = 8.dp)
             .imePadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -171,7 +188,14 @@ fun ChatScreen(modifier: Modifier = Modifier, vm: ChatViewModel, onOpenModels: (
                     horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
                 ) {
                     Card(
-                        modifier = Modifier.fillMaxWidth(0.84f),
+                        modifier = Modifier
+                            .fillMaxWidth(0.84f)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(
+                                topStart = 18.dp,
+                                topEnd = 18.dp,
+                                bottomStart = if (isUser) 18.dp else 6.dp,
+                                bottomEnd = if (isUser) 6.dp else 18.dp
+                            )),
                         colors = CardDefaults.cardColors(containerColor = bubbleColor),
                         shape = RoundedCornerShape(
                             topStart = 18.dp,
@@ -226,7 +250,9 @@ fun ChatScreen(modifier: Modifier = Modifier, vm: ChatViewModel, onOpenModels: (
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                         Card(
-                            modifier = Modifier.fillMaxWidth(0.84f),
+                            modifier = Modifier
+                                .fillMaxWidth(0.84f)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f), RoundedCornerShape(18.dp)),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                             shape = RoundedCornerShape(18.dp)
                         ) {
@@ -243,7 +269,9 @@ fun ChatScreen(modifier: Modifier = Modifier, vm: ChatViewModel, onOpenModels: (
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                         Card(
-                            modifier = Modifier.fillMaxWidth(0.30f),
+                            modifier = Modifier
+                                .fillMaxWidth(0.30f)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f), RoundedCornerShape(18.dp)),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                             shape = RoundedCornerShape(18.dp)
                         ) {
@@ -270,16 +298,34 @@ fun ChatScreen(modifier: Modifier = Modifier, vm: ChatViewModel, onOpenModels: (
                     onClick = if (isGenerating) vm::stopGeneration else vm::send,
                     enabled = state.activeModel != null && (!isBusy || isGenerating),
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(56.dp)
                 ) {
                     Icon(
                         imageVector = if (isGenerating) Icons.Default.Stop else Icons.Default.Send,
                         contentDescription = if (isGenerating) stringResource(R.string.stop_button) else stringResource(R.string.send_button),
-                        modifier = Modifier.size(34.dp)
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
         }
+    }
+    }
+}
+
+@Composable
+private fun TypingIndicator() {
+    val transition = rememberInfiniteTransition(label = "typing")
+    val a1 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550), RepeatMode.Reverse), label = "dot1")
+    val a2 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550, delayMillis = 120), RepeatMode.Reverse), label = "dot2")
+    val a3 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550, delayMillis = 240), RepeatMode.Reverse), label = "dot3")
+    Row(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a1.value))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a2.value))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a3.value))
     }
 }
 
@@ -577,9 +623,11 @@ private fun ScreenCard(modifier: Modifier = Modifier, content: @Composable () ->
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.74f),
-        shadowElevation = 4.dp,
+            .animateContentSize()
+            .clip(RoundedCornerShape(20.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(20.dp)),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
+        shadowElevation = 8.dp,
         shape = RoundedCornerShape(20.dp)
     ) {
         Box(modifier = Modifier.padding(14.dp)) {
