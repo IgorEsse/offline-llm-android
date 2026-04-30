@@ -330,6 +330,23 @@ private fun TypingIndicator() {
 }
 
 @Composable
+private fun TypingIndicator() {
+    val transition = rememberInfiniteTransition(label = "typing")
+    val a1 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550), RepeatMode.Reverse), label = "dot1")
+    val a2 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550, delayMillis = 120), RepeatMode.Reverse), label = "dot2")
+    val a3 = transition.animateFloat(0.25f, 1f, infiniteRepeatable(tween(550, delayMillis = 240), RepeatMode.Reverse), label = "dot3")
+    Row(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a1.value))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a2.value))
+        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a3.value))
+    }
+}
+
+@Composable
 fun SettingsScreen(vm: SettingsViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
